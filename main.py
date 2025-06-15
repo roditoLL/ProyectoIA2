@@ -5,12 +5,12 @@ from sqlmodel import Field,Session,create_engine,select,SQLModel
 from sqlalchemy import Column, Integer, ForeignKey, PrimaryKeyConstraint
 from fastapi.middleware.cors import CORSMiddleware
 from sklearn.metrics.pairwise import cosine_similarity
-
+import numpy
 from model import  generar_embeddings, entrenar_modelo
 
 
 #Definimos el sqlmodel y la conexion con mysql
-url_connection = 'mysql+pymysql://root:1398@localhost:3307/universidad'
+url_connection = 'mysql+pymysql://root:{usar_su_constrasena}@localhost:{usar_su_puerto_de_mysql}/universidad'
 engine = create_engine(url_connection)
 
 #funcion para crear las tablas y la base de datos si no exisitiera 

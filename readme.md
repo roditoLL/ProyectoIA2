@@ -15,7 +15,12 @@ pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geo
 pip install "fastapi[standard]"
 pip install sqlmodel sqlalchemy
 pip install scikit-learn
-pip install pandas numpy
+pip install pandas 
+## si ya instalaron numpy en la version 2.0 o mayor por fa desistalenlo con este comando
+pip pip uninstall numpy
+## usar este otro comando
+pip install "numpy<2"
+pip install pymysql
 ```
 Esto haganlo en una terminal linux como el de git bash ubicados en el proyecto.
 Para desactivar el entorno solo usar el comando:
