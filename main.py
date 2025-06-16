@@ -1,150 +1,149 @@
 import pandas as pd
-from typing import  Annotated
-from fastapi import FastAPI,Depends,Query
-from sqlmodel import Field,Session,create_engine,select,SQLModel
-from sqlalchemy import Column, Integer, ForeignKey, PrimaryKeyConstraint
+from typing import Annotated, List
+from fastapi import FastAPI, Depends, Query
+from sqlmodel import Field, Session, create_engine, select, SQLModel
 from fastapi.middleware.cors import CORSMiddleware
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy
-from model import  generar_embeddings, entrenar_modelo
 
+from model import generar_embeddings, entrenar_modelo
 
-#Definimos el sqlmodel y la conexion con mysql
-url_connection = 'mysql+pymysql://root:{usar_su_constrasena}@localhost:{usar_su_puerto_de_mysql}/universidad'
+# Conexión con MySQL
+url_connection = 'mysql+pymysql://root:mipassword@localhost:3306/universidad'
 engine = create_engine(url_connection)
 
-#funcion para crear las tablas y la base de datos si no exisitiera 
+
+# Modelos
+class asignatura(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    nombre: str
+    codigo: int
+    carrera: str
+    area: str
+    nivel: str
+    tipo: str
+    electiva: bool
+    modalidad: str
+    es_compartida: bool
+    departamento: str
+
+
+class conexiones(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_origen: int = Field(foreign_key="asignatura.id")
+    id_destino: int = Field(foreign_key="asignatura.id")
+    Relacion: str
+
+
+# Crear base y tablas
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-#funcion que solo nos permite tener una sesion activa,cada vez que cambie algo en la base de datos
+
+# Dependencia de sesión
 def get_session():
     with Session(engine) as session:
         yield session
 
-session_dep = Annotated[Session,Depends(get_session)]
+session_dep = Annotated[Session, Depends(get_session)]
 
-
-#definimos los modelos
-class Asignatura(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    nombre: str
-    area:str
-    semestre:int
-    carrera:str
-
-class Relaciones(SQLModel, table=True):
-    origen_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("asignatura.id", name="fk_relaciones_origen"))
-    )
-    destino_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("asignatura.id", name="fk_relaciones_destino"))
-    )
-
-    __table_args__ = (
-        PrimaryKeyConstraint("origen_id", "destino_id", name="pk_relaciones"),
-    )
-
-#iniciamos el backend en este punto
+# FastAPI
 app = FastAPI()
-# se deben configurar los CORS para poder compartir informacion del backend hacia el frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Aquí va tu frontend (React)
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["*"],  # Puedes restringir si lo deseas: ["GET", "POST"]
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-#funcion que realizara directamente consultas a la base de datos y las guardara en dataframes
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
+
+# Obtener datos en DataFrames
 def obtener_datos():
     asignaturas = pd.read_sql("SELECT * FROM asignatura", con=engine)
-    relaciones = pd.read_sql("SELECT origen_id, destino_id FROM relaciones", con=engine)
-    return asignaturas, relaciones
-
-#endpoint que nos devolvera la similitud de las asignaturas segun el area
-@app.get("/similares")
-def calcular_similitud():
-    asignaturas, relaciones = obtener_datos()
-    #converitmos los datos a grafo
-    '''
-    data: objeto Data de PyTorch Geometric con nodos y aristas.
-    nombres, carreras, areas: listas paralelas para cada nodo (por índice).
-    '''
-    data, nombres, carreras,areas = generar_embeddings(asignaturas, relaciones)
-    modelo = entrenar_modelo(data)  # Aquí entrenamos el modelo
-    out = modelo(data).detach().numpy()
-    #Calcular similitud,Esto genera una matriz de similitud coseno entre los embeddings, donde sim_matrix[i][j] indica cuán parecidos son los nodos i y j.
-    sim_matrix = cosine_similarity(out)
-
-    nodes = []
-    links = []
-    added_nodes = set()
-    pares_ya_agregados = set()
-    #para cada nodo , si no fue agregado lo anadimos con su id,carrera,area
-    for i in range(len(out)):
-        nombre_i = nombres[i]
-        if nombre_i not in added_nodes:
-            nodes.append({
-                "id": nombre_i,
-                "carrera": carreras[i],
-                "area": areas[i]  # incluir área
-            })
-            added_nodes.add(nombre_i)
-        
-        #Solo enlazamos pares de materias si:Son de carreras diferentes,son del mismo área temática,tienen alta similitud (> 0.7).
-        for j in range(i + 1, len(out)):
-            if (
-                carreras[i] != carreras[j]
-                and areas[i] == areas[j]  # misma área
-                and sim_matrix[i][j] > 0.7
-            ):
-                nombre_j = nombres[j]
-                if nombre_j not in added_nodes:
-                    nodes.append({
-                        "id": nombre_j,
-                        "carrera": carreras[j],
-                        "area": areas[j]
-                    })
-                    added_nodes.add(nombre_j)
-
-                par = tuple(sorted([nombre_i, nombre_j]))
-                if par not in pares_ya_agregados:
-                    #Se crea un link entre las dos materias con el área y la similitud.
-                    links.append({
-                        "source": nombre_i,
-                        "target": nombre_j,
-                        "similitud": round(float(sim_matrix[i][j]), 2),
-                        "area": areas[i]  # también puedes incluir el área en el enlace
-                    })
-                    pares_ya_agregados.add(par)
-
-    return {"nodes": nodes, "links": links}
+    conexiones_df = pd.read_sql("SELECT id_origen, id_destino FROM conexiones", con=engine)
+    return asignaturas, conexiones_df
 
 
 @app.get("/")
 def root():
     return {"Hello": "World"}
 
-@app.on_event('startup')
-def on_startup():
-    create_db_and_tables()
 
-@app.get("/asignaturas/",response_model=list[Asignatura])
-def read_asignaturas(
-    session:session_dep,
-    offset:int = 0,
-    limit:Annotated[int,Query(le=100)]=100,
-):
-    asignaturas = session.exec(select(Asignatura).offset(offset).limit(limit)).all()
-    return asignaturas
 
-@app.post("/asignaturas/", response_model=Asignatura)
-def create_asignatura(asignatura: Asignatura, session: session_dep):
-    db_asignatura = Asignatura.model_validate(asignatura)
-    session.add(db_asignatura)
+@app.get("/similares")
+def calcular_similitud(nombre: str = Query(...)):
+    asignaturas, conexiones_df = obtener_datos()
+    data, nombres, carreras, areas = generar_embeddings(asignaturas, conexiones_df)
+    modelo = entrenar_modelo(data)
+    out = modelo(data).detach().numpy()
+    sim_matrix = cosine_similarity(out)
+
+    try:
+        index_nombre = nombres.index(nombre.strip().upper())
+    except ValueError:
+        return {"nodes": [], "links": []}
+
+    nodes = set()
+    links = []
+
+    for j in range(len(out)):
+        if j == index_nombre:
+            continue
+
+        # ✅ ÚNICA condición: similitud alta
+        if sim_matrix[index_nombre][j] > 0.98:  # puedes ajustar este valor
+            source = nombres[index_nombre]
+            target = nombres[j]
+
+            # Agregar nodos sin forzar por área ni carrera
+            nodes.add((source, carreras[index_nombre], areas[index_nombre]))
+            nodes.add((target, carreras[j], areas[j]))
+
+            links.append({
+                "source": source,
+                "target": target,
+                "similitud": round(float(sim_matrix[index_nombre][j]), 2)
+            })
+
+    nodes_dict = [{"id": n[0], "carrera": n[1], "area": n[2]} for n in nodes]
+
+    return {"nodes": nodes_dict, "links": links}
+
+
+
+
+
+@app.get("/asignaturas/", response_model=list[asignatura])
+def read_asignaturas(session: session_dep, offset: int = 0, limit: Annotated[int, Query(le=100)] = 100):
+    return session.exec(select(asignatura).offset(offset).limit(limit)).all()
+
+
+@app.post("/asignaturas/", response_model=asignatura)
+def create_asignatura(asignatura: asignatura, session: session_dep):
+    session.add(asignatura)
     session.commit()
-    session.refresh(db_asignatura)
-    return db_asignatura
+    session.refresh(asignatura)
+    return asignatura
 
 
+@app.get("/carreras/", response_model=List[str])
+def list_carreras(session: Session = Depends(get_session)):
+    stmt = select(asignatura.carrera).distinct().order_by(asignatura.carrera)
+    return session.exec(stmt).all()
+
+
+@app.get("/areas/", response_model=List[str])
+def list_areas(session: Session = Depends(get_session)):
+    stmt = select(asignatura.area).distinct().order_by(asignatura.area)
+    return session.exec(stmt).all()
+
+
+@app.get("/conexiones/", response_model=List[conexiones])
+def get_conexiones(session: Session = Depends(get_session)):
+    return session.exec(select(conexiones)).all()
+
+
+#desde aca volverr 
