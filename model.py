@@ -57,35 +57,35 @@ def entrenar_modelo(data, epochs=100, lr=0.01):
  asignaturas DataFrame con info de las materias (nombre, semestre, área, carrera, etc).
  relaciones:DataFrame con pares de IDs que indican qué asignaturas están relacionadas (aristas del grafo).
 '''
-def generar_embeddings(asignaturas, relaciones):
-
-    # Convertir columnas categóricas en variables dummy,ose convertirlos a valores 0 o 1
+def generar_embeddings(asignaturas, conexiones):
+    # Convertir columnas categóricas a variables dummy
     area_dummies = pd.get_dummies(asignaturas['area'])
     carrera_dummies = pd.get_dummies(asignaturas['carrera'])
 
-    # Combinar con la columna 'semestre' que ya es numérica con axis=1 lo concatenamos horizontalmente
-    # el resultado sera una tabla en donde cada fila sera una asignatura y sus columnas seran las diferentes caracterisitcas
-    features = pd.concat([asignaturas[['semestre']], area_dummies, carrera_dummies], axis=1)
+    # Asegurarse de que el nivel sea numérico o codificarlo
+    try:
+        nivel = asignaturas['nivel'].astype(float)
+    except:
+        # si contiene letras, las codificamos
+        nivel_map = {val: idx for idx, val in enumerate(sorted(asignaturas['nivel'].unique()))}
+        nivel = asignaturas['nivel'].map(nivel_map)
 
-    # Verificar que todas las columnas sean numéricas
+    # Concatenamos todos los features
+    features = pd.concat([
+        nivel.rename("nivel"),
+        area_dummies,
+        carrera_dummies
+    ], axis=1)
+
+    # Depuración: verificar que todo sea numérico
     print(features.dtypes)
 
-    '''
-    astype(np.float32) asegura que los datos sean de tipo float32, que es compatible con PyTorch.
-    torch.tensor(..., dtype=torch.float) convierte ese arreglo a un tensor de PyTorch, que es la estructura que usará el modelo.
-    '''
+    # Convertir a tensor
     x = torch.tensor(features.values.astype(np.float32), dtype=torch.float)
 
-    # Crear edge_index y el edge_index contiene las conexiones entre nodos (quién está relacionado con quién).
-    edge_index = torch.tensor(relaciones.values.T - 1, dtype=torch.long)
+    # Crear aristas (edge_index)
+    edge_index = torch.tensor(conexiones.values.T - 1, dtype=torch.long)
 
-    # Empaquetar en Data de PyG
+    # Devolver grafo PyG
     data = Data(x=x, edge_index=edge_index)
-
-    '''
-    data: el grafo listo para PyG.
-    nombres: lista con los nombres de las asignaturas.
-    carreras: lista con las carreras asociadas a cada asignatura.
-    area: lista con las áreas de cada asignatura.
-    '''
     return data, list(asignaturas['nombre']), list(asignaturas['carrera']), list(asignaturas['area'])
