@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from model import generar_embeddings, entrenar_modelo
 
 # Conexión con MySQL
-url_connection = 'mysql+pymysql://root:mipassword@localhost:3306/universidad'
+url_connection = 'mysql+pymysql://root:1398@localhost:3307/universidad'
 engine = create_engine(url_connection)
 
 
@@ -31,7 +31,7 @@ class conexiones(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     id_origen: int = Field(foreign_key="asignatura.id")
     id_destino: int = Field(foreign_key="asignatura.id")
-    Relacion: str
+    relacion: str
 
 
 # Crear base y tablas
@@ -63,7 +63,7 @@ def on_startup():
 # Obtener datos en DataFrames
 def obtener_datos():
     asignaturas = pd.read_sql("SELECT * FROM asignatura", con=engine)
-    conexiones_df = pd.read_sql("SELECT id_origen, id_destino FROM conexiones", con=engine)
+    conexiones_df = pd.read_sql("SELECT * FROM conexiones", con=engine)
     return asignaturas, conexiones_df
 
 
@@ -74,7 +74,8 @@ def root():
 
 
 @app.get("/similares")
-def calcular_similitud(nombre: str = Query(...)):
+def calcular_similitud(nombre: str = Query(...),area:str = Query(...),carrera:str = Query(...)):
+    print("el nombre es:",nombre)
     asignaturas, conexiones_df = obtener_datos()
     data, nombres, carreras, areas = generar_embeddings(asignaturas, conexiones_df)
     modelo = entrenar_modelo(data)
@@ -92,9 +93,10 @@ def calcular_similitud(nombre: str = Query(...)):
     for j in range(len(out)):
         if j == index_nombre:
             continue
-
+        cumple_carrera = carrera == "Todas" or carreras[j] == carrera
+        cumple_area = area == "Todas" or areas[j] == area
         # ✅ ÚNICA condición: similitud alta
-        if sim_matrix[index_nombre][j] > 0.98:  # puedes ajustar este valor
+        if cumple_carrera and cumple_area and sim_matrix[index_nombre][j] > 0.9:# puedes ajustar este valor
             source = nombres[index_nombre]
             target = nombres[j]
 

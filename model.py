@@ -59,33 +59,31 @@ def entrenar_modelo(data, epochs=100, lr=0.01):
 '''
 def generar_embeddings(asignaturas, conexiones):
     # Convertir columnas categóricas a variables dummy
-    area_dummies = pd.get_dummies(asignaturas['area'])
-    carrera_dummies = pd.get_dummies(asignaturas['carrera'])
+    # --- Procesamiento de nodos (asignaturas) ---
+    print("estas son las columnas de conexiones:",conexiones.columns)
+    asignaturas['electiva'] = asignaturas['electiva'].astype(int)
+    asignaturas['es_compartida'] = asignaturas['es_compartida'].astype(int)
 
-    # Asegurarse de que el nivel sea numérico o codificarlo
-    try:
-        nivel = asignaturas['nivel'].astype(float)
-    except:
-        # si contiene letras, las codificamos
-        nivel_map = {val: idx for idx, val in enumerate(sorted(asignaturas['nivel'].unique()))}
-        nivel = asignaturas['nivel'].map(nivel_map)
-
-    # Concatenamos todos los features
+    dummies = pd.get_dummies(asignaturas[['carrera', 'area', 'nivel', 'tipo', 'modalidad', 'departamento']])
+    
     features = pd.concat([
-        nivel.rename("nivel"),
-        area_dummies,
-        carrera_dummies
+        asignaturas[['electiva', 'es_compartida']],
+        dummies
     ], axis=1)
 
-    # Depuración: verificar que todo sea numérico
-    print(features.dtypes)
-
-    # Convertir a tensor
     x = torch.tensor(features.values.astype(np.float32), dtype=torch.float)
 
-    # Crear aristas (edge_index)
-    edge_index = torch.tensor(conexiones.values.T - 1, dtype=torch.long)
+    # --- Procesamiento de conexiones ---
 
-    # Devolver grafo PyG
+    # Edge index
+    edge_index = torch.tensor(conexiones[['id_origen', 'id_destino']].values.T - 1, dtype=torch.long)
+
+    # Edge attributes: codificación de la relación (por ejemplo, prerrequisito, recomendado, etc.)
+    # tipo_relacion_dummies = pd.get_dummies(conexiones['relacion'])
+    # edge_attr = torch.tensor(tipo_relacion_dummies.values.astype(np.float32), dtype=torch.float)
+
+    # data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
     data = Data(x=x, edge_index=edge_index)
+
+    # También puedes devolver los nombres si quieres mostrar en la UI
     return data, list(asignaturas['nombre']), list(asignaturas['carrera']), list(asignaturas['area'])
