@@ -96,7 +96,7 @@ def calcular_similitud(nombre: str = Query(...),area:str = Query(...),carrera:st
         cumple_carrera = carrera == "Todas" or carreras[j] == carrera
         cumple_area = area == "Todas" or areas[j] == area
         # ✅ ÚNICA condición: similitud alta
-        if cumple_carrera and cumple_area and sim_matrix[index_nombre][j] > 0.9:# puedes ajustar este valor
+        if sim_matrix[index_nombre][j] > 0.9 and (cumple_area or cumple_carrera):# puedes ajustar este valor
             source = nombres[index_nombre]
             target = nombres[j]
 

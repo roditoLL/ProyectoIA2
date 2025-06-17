@@ -51,7 +51,7 @@ export default function App() {
     .then((r) => r.json())
     .then(setResultados)
     .catch(console.error);
-}, [filters.nombre, filters.carrera, filters.area]);
+}, [filters]);
 
   function handleChange(e) {
     const { name, value } = e.target;

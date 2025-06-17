@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 
 export default function SimilaridadGraph({ data = { nodes: [], links: [] } }) {
+  console.log("data:",data);
   const fgRef = useRef();
 
   const nodes = Array.isArray(data.nodes) ? data.nodes : [];
@@ -10,8 +11,7 @@ export default function SimilaridadGraph({ data = { nodes: [], links: [] } }) {
   // Tooltip con información completa
   const nodeLabel = (node) => {
     return `
-ID: ${node.id}
-Nombre: ${node.nombre ?? "?"}
+Nombre: ${node.id ?? "?"}
 Carrera: ${node.carrera ?? "?"}
 Área: ${node.area ?? "?"}
 Similitud: ${node.similitud}

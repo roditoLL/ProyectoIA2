@@ -39,14 +39,22 @@ class GraphTransformerModel(torch.nn.Module):
 
 def entrenar_modelo(data, epochs=100, lr=0.01):
     modelo = GraphTransformerModel(data.num_node_features, 16)
-    optimizer = optim.Adam(modelo.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(modelo.parameters(), lr=lr)
+
+    edge_index = data.edge_index.T  # pares (i, j)
 
     modelo.train()
     for epoch in range(epochs):
         optimizer.zero_grad()
-        out = modelo(data)
-        # Entrenamiento sin etiquetas, solo para dispersar embeddings
-        loss = F.mse_loss(out, out.detach())
+        out = modelo(data)  # embeddings
+
+        loss = 0.0
+        for i, j in edge_index:
+            # Cosine distance entre nodos conectados (queremos que sea bajo)
+            sim = F.cosine_similarity(out[i], out[j], dim=0)
+            loss += 1 - sim  # minimizar 1 - similitud
+
+        loss = loss / edge_index.shape[0]  # promedio
         loss.backward()
         optimizer.step()
 
@@ -79,11 +87,11 @@ def generar_embeddings(asignaturas, conexiones):
     edge_index = torch.tensor(conexiones[['id_origen', 'id_destino']].values.T - 1, dtype=torch.long)
 
     # Edge attributes: codificación de la relación (por ejemplo, prerrequisito, recomendado, etc.)
-    # tipo_relacion_dummies = pd.get_dummies(conexiones['relacion'])
-    # edge_attr = torch.tensor(tipo_relacion_dummies.values.astype(np.float32), dtype=torch.float)
+    tipo_relacion_dummies = pd.get_dummies(conexiones['relacion'])
+    edge_attr = torch.tensor(tipo_relacion_dummies.values.astype(np.float32), dtype=torch.float)
 
-    # data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
-    data = Data(x=x, edge_index=edge_index)
+    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+    # data = Data(x=x, edge_index=edge_index)
 
     # También puedes devolver los nombres si quieres mostrar en la UI
     return data, list(asignaturas['nombre']), list(asignaturas['carrera']), list(asignaturas['area'])
