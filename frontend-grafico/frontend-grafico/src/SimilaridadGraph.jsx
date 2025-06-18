@@ -14,7 +14,6 @@ export default function SimilaridadGraph({ data = { nodes: [], links: [] } }) {
 Nombre: ${node.id ?? "?"}
 Carrera: ${node.carrera ?? "?"}
 Área: ${node.area ?? "?"}
-Similitud: ${node.similitud}
     `.trim();
   };
 
@@ -25,6 +24,7 @@ Similitud: ${node.similitud}
         graphData={{ nodes, links }}
         nodeLabel={nodeLabel}
         nodeAutoColorBy="area"
+        linkLabel={(link) => `Similitud: ${link.similitud ?? "?"}`}
         linkDirectionalArrowLength={5}
         linkDirectionalArrowRelPos={0.9}
         nodeCanvasObjectMode={() => "after"}

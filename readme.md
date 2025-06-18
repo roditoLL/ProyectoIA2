@@ -27,13 +27,19 @@ Para desactivar el entorno solo usar el comando:
 ```bash
 deactivate
 ```
-
+Para hacer correr el backend en fastApi utilizar este comando:
+```bash
+ fastapi dev main.py
+```
 # Para el frontend
 Para el frontend solamente ejecuten este comando
 ```bash
  npm run install
 ```
-el frontend deben abrirlo en otra pestana de su terminal
+el frontend deben abrirlo en otra pestana de su terminal y para hacer correr ejecutar el comando:
+```bash
+ npm run dev
+```
 
 # Para la base de datos
 Se instalan docker de su pagina ofical, pero antes se deben instalar WSL2 para que corra bien docker,despues deben

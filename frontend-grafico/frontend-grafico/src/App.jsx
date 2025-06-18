@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import SimilaridadGraph from "./SimilaridadGraph";
+import ClipLoader from "react-spinners/ClipLoader";
 
 export default function App() {
   const [carreras, setCarreras] = useState([]);
   const [areas, setAreas] = useState([]);
   const [asignaturas, setAsignaturas] = useState([]);
   const [resultados, setResultados] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [filters, setFilters] = useState({
     nombre: "",
@@ -32,26 +34,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-  if (!filters.nombre) return;
-  console.log(filters)
+    if (!filters.nombre) return;
+    console.log(filters)
+    
 
-  let url = `http://127.0.0.1:8000/similares?nombre=${encodeURIComponent(filters.nombre)}`;
+    let url = `http://127.0.0.1:8000/similares?nombre=${encodeURIComponent(filters.nombre)}`;
 
-  if (!filters.carrera || filters.carrera.trim() === "") {
-    url += `&carrera=Todas`;
-  } else {
-    url += `&carrera=${encodeURIComponent(filters.carrera)}`;
-  }
+    if (!filters.carrera || filters.carrera.trim() === "") {
+      url += `&carrera=Todas`;
+    } else {
+      url += `&carrera=${encodeURIComponent(filters.carrera)}`;
+    }
 
-  if (filters.area) {
-    url += `&area=${encodeURIComponent(filters.area)}`;
-  }
+    if (filters.area) {
+      url += `&area=${encodeURIComponent(filters.area)}`;
+    }
 
-  fetch(url)
-    .then((r) => r.json())
-    .then(setResultados)
-    .catch(console.error);
-}, [filters]);
+    fetch(url)
+      .then((r) => r.json())
+      .then(setResultados)
+    setLoading(true)
+    if (resultados) {
+      setLoading(false)
+    }
+  }, [filters]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -158,8 +164,11 @@ export default function App() {
         </aside>
         <main style={{ flex: 1, padding: 20, overflow: "auto" }}>
           <h2>Resultados</h2>
-          {/* Solo renderiza el grafo si hay datos */}
-          {resultados ? (
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+              <ClipLoader color="#36d7b7" size={50} />
+            </div>
+          ) : resultados ? (
             <SimilaridadGraph data={resultados} />
           ) : (
             <p>No hay resultados aún. Pulsa “Buscar”.</p>

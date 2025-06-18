@@ -39,27 +39,24 @@ class GraphTransformerModel(torch.nn.Module):
 
 def entrenar_modelo(data, epochs=100, lr=0.01):
     modelo = GraphTransformerModel(data.num_node_features, 16)
-    optimizer = torch.optim.Adam(modelo.parameters(), lr=lr)
-
-    edge_index = data.edge_index.T  # pares (i, j)
+    optimizer = optim.Adam(modelo.parameters(), lr=lr)
 
     modelo.train()
     for epoch in range(epochs):
         optimizer.zero_grad()
-        out = modelo(data)  # embeddings
-
-        loss = 0.0
-        for i, j in edge_index:
-            # Cosine distance entre nodos conectados (queremos que sea bajo)
-            sim = F.cosine_similarity(out[i], out[j], dim=0)
-            loss += 1 - sim  # minimizar 1 - similitud
-
-        loss = loss / edge_index.shape[0]  # promedio
+        out = modelo(data)
+        # Entrenamiento sin etiquetas, solo para dispersar embeddings
+        loss = F.mse_loss(out, out.detach())
         loss.backward()
         optimizer.step()
 
     modelo.eval()
     return modelo
+
+'''
+ asignaturas DataFrame con info de las materias (nombre, semestre, área, carrera, etc).
+ relaciones:DataFrame con pares de IDs que indican qué asignaturas están relacionadas (aristas del grafo).
+'''
 
 '''
  asignaturas DataFrame con info de las materias (nombre, semestre, área, carrera, etc).
