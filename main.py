@@ -75,18 +75,22 @@ def root():
 
 @app.get("/similares")
 def calcular_similitud(nombre: str = Query(...),area:str = Query(...),carrera:str = Query(...)):
-    print("el nombre es:",nombre)
+    #obtenemos los datos de la base de datos en dataframes
     asignaturas, conexiones_df = obtener_datos()
+    #generamos los embeddings
     data, nombres, carreras, areas = generar_embeddings(asignaturas, conexiones_df)
+    #pasamos a entrenar el modelo con la funcion forward del graphTransformer
     modelo = entrenar_modelo(data)
+    #obtenemos la salida y dejamos de entrenar, se convierten los valores para utilizar en el calculo
+    # de similitud
     out = modelo(data).detach().numpy()
+    #realizamos el calculo de similitud con los valores del entrenamiento.
     sim_matrix = cosine_similarity(out)
-
     try:
         index_nombre = nombres.index(nombre.strip().upper())
+    #si no hay relaciones no hay nada que devolver
     except ValueError:
         return {"nodes": [], "links": []}
-
     nodes = set()
     links = []
 
@@ -95,7 +99,7 @@ def calcular_similitud(nombre: str = Query(...),area:str = Query(...),carrera:st
             continue
         cumple_carrera = carrera == "Todas" or carreras[j] == carrera
         cumple_area = area == "Todas" or areas[j] == area
-        # ✅ ÚNICA condición: similitud alta
+        # UNICA condición: similitud alta
         if sim_matrix[index_nombre][j] > 0.9 and (cumple_area or cumple_carrera):# puedes ajustar este valor
             source = nombres[index_nombre]
             target = nombres[j]

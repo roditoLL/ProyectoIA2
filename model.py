@@ -68,9 +68,10 @@ def generar_embeddings(asignaturas, conexiones):
     print("estas son las columnas de conexiones:",conexiones.columns)
     asignaturas['electiva'] = asignaturas['electiva'].astype(int)
     asignaturas['es_compartida'] = asignaturas['es_compartida'].astype(int)
-
+    #dummies tendra los valores numericos de estas columnas
     dummies = pd.get_dummies(asignaturas[['carrera', 'area', 'nivel', 'tipo', 'modalidad', 'departamento']])
-    
+    #concatenamos con estas columnas,ya que de estas son valores en la base de datos son de tipo
+    # booleando
     features = pd.concat([
         asignaturas[['electiva', 'es_compartida']],
         dummies
@@ -80,10 +81,10 @@ def generar_embeddings(asignaturas, conexiones):
 
     # --- Procesamiento de conexiones ---
 
-    # Edge index
+    # Edge index de la tabla conexiones
     edge_index = torch.tensor(conexiones[['id_origen', 'id_destino']].values.T - 1, dtype=torch.long)
 
-    # Edge attributes: codificación de la relación (por ejemplo, prerrequisito, recomendado, etc.)
+    # Edge attributes: codificación de la relación (por ejemplo, prerrequisito, es_compartida, etc.)
     tipo_relacion_dummies = pd.get_dummies(conexiones['relacion'])
     edge_attr = torch.tensor(tipo_relacion_dummies.values.astype(np.float32), dtype=torch.float)
 
