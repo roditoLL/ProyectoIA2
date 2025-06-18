@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from model import generar_embeddings, entrenar_modelo
 
 # Conexión con MySQL
-url_connection = 'mysql+pymysql://root:1398@localhost:3307/universidad'
+url_connection = 'mysql+pymysql://root:1234@localhost:3307/universidad'
 engine = create_engine(url_connection)
 
 

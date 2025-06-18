@@ -85,7 +85,7 @@ def generar_embeddings(asignaturas, conexiones):
     edge_index = torch.tensor(conexiones[['id_origen', 'id_destino']].values.T - 1, dtype=torch.long)
 
     # Edge attributes: codificación de la relación (por ejemplo, prerrequisito, es_compartida, etc.)
-    tipo_relacion_dummies = pd.get_dummies(conexiones['relacion'])
+    tipo_relacion_dummies = pd.get_dummies(conexiones['Relacion'])
     edge_attr = torch.tensor(tipo_relacion_dummies.values.astype(np.float32), dtype=torch.float)
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
